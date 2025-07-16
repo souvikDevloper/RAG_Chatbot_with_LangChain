@@ -1,7 +1,12 @@
 ####################################################################
 #                         import
 ####################################################################
-
+import sys
+try:
+    import pysqlite3          # wheel ships its own SQLite ≥ 3.35
+    sys.modules["sqlite3"] = pysqlite3
+except ImportError:
+    pass
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
