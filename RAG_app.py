@@ -218,38 +218,52 @@ def sidebar_and_documentChooser():
         if st.session_state.error_message:
             st.warning(st.session_state.error_message)
 
+        # =========== OPEN VECTORSTORE TAB ===========
     with tab_open:
-        import tkinter as tk
-        from tkinter import filedialog
+        store_root = LOCAL_VECTOR_STORE_DIR
+        all_stores = sorted([d.name for d in store_root.iterdir() if d.is_dir()])
 
-        clicked = st.button("Vectorstore chooser")
-        if clicked:
-            errs = []
-            if not any(
-                [
-                    st.session_state.openai_api_key,
-                    st.session_state.google_api_key,
-                    st.session_state.hf_api_key,
-                ]
-            ):
-                errs.append(f"insert your {st.session_state.LLM_provider} API key")
-            if (
-                st.session_state.retriever_type == "Cohere reranker"
-                and not st.session_state.cohere_api_key
-            ):
-                errs.append("insert your Cohere API key")
+        if not all_stores:
+            st.info("No vector‑stores found. Create one in the first tab.")
+        else:
+            selected_vs = st.selectbox("Select a saved Vectorstore", all_stores)
 
-            if errs:
-                st.warning("Please " + ", and ".join(errs) + ".")
-                return
+            if st.button("Load selected Vectorstore") and selected_vs:
+                # check API keys
+                missing = []
+                if not any([st.session_state.openai_api_key,
+                            st.session_state.google_api_key,
+                            st.session_state.hf_api_key]):
+                    missing.append(f"{st.session_state.LLM_provider} API key")
+                if (st.session_state.retriever_type == "Cohere reranker"
+                        and not st.session_state.cohere_api_key):
+                    missing.append("Cohere API key")
+                if missing:
+                    st.warning("Please insert " + ", and ".join(missing) + ".")
+                    st.stop()
 
-            root = tk.Tk()
-            root.withdraw()
-            root.wm_attributes("-topmost", 1)
-            selected_path = filedialog.askdirectory(master=root)
-            if not selected_path:
-                st.info("No folder selected.")
-                return
+                selected_path = store_root / selected_vs
+                with st.spinner("Loading vector‑store…"):
+                    try:
+                        embeddings = select_embeddings_model()
+                        st.session_state.vector_store = Chroma(
+                            embedding_function=embeddings,
+                            persist_directory=selected_path.as_posix(),
+                        )
+                        st.session_state.retriever = create_retriever(
+                            st.session_state.vector_store,
+                            embeddings,
+                            st.session_state.retriever_type,
+                        )
+                        (st.session_state.chain,
+                         st.session_state.memory) = create_ConversationalRetrievalChain(
+                            st.session_state.retriever,
+                            language=st.session_state.assistant_language,
+                        )
+                        clear_chat_history()
+                        st.success(f"Loaded **{selected_vs}** successfully.")
+                    except Exception as e:
+                        st.error(e)
 
             with st.spinner("Loading vectorstore…"):
                 try:
