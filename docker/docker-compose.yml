@@ -1,0 +1,42 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    env_file:
+      - ../.env
+    volumes:
+      - ../data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  ui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ui
+    env_file:
+      - ../.env
+    environment:
+      - API_BASE_URL=http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    env_file:
+      - ../.env
+    volumes:
+      - ../data:/app/data
+    depends_on:
+      - redis
