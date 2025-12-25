@@ -1,88 +1,108 @@
-<!-- ──────────────────────────────────────────────────────────────────────────── -->
-<!-- Title & Badges                                                             -->
-<!-- ──────────────────────────────────────────────────────────────────────────── -->
+# Agentic Hybrid RAG
 
-<h1 align="center">🧠🔗 RAG Chatbot — LangChain × Gemini × OpenAI × Hugging Face</h1>
+[![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/fastapi-0.110-0a7f9b)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/streamlit-1.x-ff4b4b)](https://streamlit.io/)
+[![Chroma](https://img.shields.io/badge/chroma-db-6c5ce7)](https://www.trychroma.com/)
+[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-<p align="center">
-  <a href="https://python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white"></a>
-  <a href="https://streamlit.io/"><img alt="Streamlit" src="https://img.shields.io/badge/UI-Streamlit-fc4c02?logo=streamlit&logoColor=white"></a>
-  <a href="https://docs.langchain.com/"><img alt="LangChain" src="https://img.shields.io/badge/LangChain-%F0%9F%94%97-green"></a>
-  <a href="#"><img alt="License" src="https://img.shields.io/badge/License-MIT-informational"></a>
-</p>
+Production‑ready RAG app with a clean Streamlit UI, FastAPI backend, background ingestion, and hybrid retrieval (vector + keyword). Built to stay small, stable, and easy to ship.
 
-<p align="center"><em>
-Ask anything about your private PDFs, DOCX, CSV or TXT files and receive<br>
-LLM-sized answers with inline citations — all through a slick Streamlit interface.
-</em></p>
+## Screenshot
 
-<div align="center">
-  <img src="data/docs/RAG_architecture.png" width="720" alt="RAG architecture diagram">
-  <p><strong>Fig. 1 — End-to-end Retrieval-Augmented Generation pipeline built with LangChain components.</strong></p>
-</div>
+Add a screenshot at `docs/screenshot.png` to showcase the UI:
 
----
+![UI Screenshot](docs/screenshot.png)
 
-## ✨ Why this project?
+## Features
 
-Large Language Models are brilliant but **static** — they can hallucinate or miss fresh facts.  
-**Retrieval-Augmented Generation (RAG)** fixes that by injecting your authoritative data into every prompt.
+- Streamlit UI with BYOK (bring your own key) support
+- FastAPI service for collections, documents, jobs, and chat
+- Async ingestion via RQ + Redis (sync fallback supported)
+- Chroma for vector search (persistent local storage)
+- SQLite metadata + FTS5 keyword search (hybrid retrieval)
+- Deterministic agent flow (no LangChain/LangGraph dependency)
 
-| Layer | Tech | Why it matters |
-|-------|------|----------------|
-| **Vector store** | <img height="18" src="https://raw.githubusercontent.com/chroma-core/chroma/main/docs/static/favicon.png"> **ChromaDB** | Fast, disk-backed similarity search — no separate server |
-| **Embeddings** | OpenAI `text-embedding-3-small`, Gemini `embedding-001`, 🤗 gte-large | Swap providers in one click |
-| **LLMs** | GPT-4-turbo · Gemini-2.5-pro · Mistral-7B-Instruct | Balance cost vs. quality |
-| **Retrievers** | Vanilla ↔ Contextual Compression ↔ Cohere Rerank | Built-in quality tiers |
-| **UI / API** | Streamlit (chat) + FastAPI (optional) | Try in seconds, integrate anywhere |
+## Quick start (Docker)
 
----
+1) Create `.env` (see `.env.example`)
+2) Run:
 
-## 🚀 Quick-start (5 minutes)
+```bash
+docker compose -f docker/docker-compose.yml up --build
+```
 
+Open:
+- API: http://localhost:8000/docs
+- UI:  http://localhost:8501
 
-git clone https://github.com/<your-github-id>/<your-repo>.git
-cd <your-repo>
+## Local dev (no Docker)
 
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install --upgrade pip && pip install -r requirements.txt
+Backend:
+```bash
+cd services/api
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
 
-streamlit run RAG_app.py
-Tip 🔑 Export keys once before running:
-export OPENAI_API_KEY=sk-… GOOGLE_API_KEY=XYZ COHERE_API_KEY=ABC HF_API_KEY=hf_…
+Worker (optional):
+```bash
+cd worker
+python -m venv .venv && . .venv/bin/activate
+pip install -r ../services/api/requirements.txt
+python worker.py
+```
 
-🖥️ What you can do
-Feature	Free-tier friendly?	Where
-Upload PDFs / DOCX / CSV / TXT in bulk	✔️	Sidebar → Create Vectorstore
-Mix-and-match embedding & LLM providers	✔️	Provider dropdowns
-Long-context compression / reranking	Contextual compression ✔️ · Cohere key required	Retriever type
-Source-document citations	✔️	“Source documents” expander
-Reload previous indexes instantly	✔️	Tab → Open Vectorstore
-Programmatic access	✔️	uvicorn api_fastapi:app
+UI:
+```bash
+cd apps/streamlit_ui
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app.py
+```
 
-🛠️ Project structure
+## Configuration
 
-│
-├─ RAG_app.py            ← Streamlit front-end (chat)
-├─ api_fastapi.py        ← Optional REST wrapper
-├─ rag_core.py           ← Embeddings, vector-store & chain helpers
-│
-├─ data/
-│   ├─ tmp/              ← Ephemeral uploads
-│   └─ vector_stores/    ← Saved Chroma indexes
-│
-└─ requirements.txt
-🔧 Extending & deploying
-Swap LLMs — any Hugging Face text-generation model works (drop ID in sidebar).
+This project ships with BYOK only. Provide keys at runtime in the UI.
 
-Add loaders — extend rag_core.langchain_document_loader.
+- LLM and embeddings use an OpenAI‑compatible API
+- Default base URL: `https://api.openai.com/v1`
+- Works with OpenAI, Groq, OpenRouter, etc. (set `base_url`)
 
-Docker — docker compose up --build (see docker-compose.yml).
+## Project layout
 
-CI tests — run pytest for chunking, retrieval precision & latency checks.
+```
+apps/streamlit_ui      Streamlit UI
+services/api           FastAPI backend + RAG pipeline
+worker/                RQ worker for ingestion
+data/                  Local persistence (mounted in Docker)
+```
 
-📝 License
-Released under the MIT License.
-Feel free to fork, star, and share!
+## Architecture
 
-<p align="center"><i>Happy augmenting, and may your answers never hallucinate 👾</i></p> ```
+```
+User -> Streamlit UI -> FastAPI
+                 |        |
+                 |        +-> SQLite (metadata, FTS5)
+                 |        +-> Chroma (vectors)
+                 |
+                 +-> Uploads -> Worker (RQ) -> Ingest -> Chroma + SQLite
+```
+
+## Data directories
+
+All data persists under `./data/` (mounted in Docker):
+- `data/sqlite/app.db` (metadata + FTS)
+- `data/chroma/` (vector db)
+- `data/blobs/` (uploaded files)
+
+## Troubleshooting
+
+- Ingestion fails at ~75%: check embeddings API key and embedding model.
+- `429 Too Many Requests`: LLM provider rate‑limited; wait or use another provider.
+- No citations: ensure documents are `ready` and retrieval returns chunks.
+
+## Security note (MVP)
+
+For async ingestion, the server stores the embedding API key in `ingest_jobs` (plain‑text JSON). Encrypt or replace with per‑user secret storage in production.
